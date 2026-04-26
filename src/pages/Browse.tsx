@@ -61,7 +61,7 @@ export default function Browse() {
         let newItems: any[] = [];
         if (query.length >= 2) {
           const res = await searchManga(query, page);
-          newItems = res?.list || res?.results || [];
+          newItems = res?.list || (res as any)?.results || [];
         } else {
           const res = await browse(page, filters);
           newItems = res?.list || [];

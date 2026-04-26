@@ -36,7 +36,7 @@ export default function Reader() {
 
           // Search for this chapterId in the merged chapter list
           let foundIndex = -1;
-          const found = mergedList.find((c: any, index: number) => {
+          let found = mergedList.find((c: any, index: number) => {
             const isMatch = c.slug === chapterId || 
               c.comick_slug === chapterId || 
               c.weebcentral_slug === chapterId || 
@@ -46,7 +46,25 @@ export default function Reader() {
             return isMatch;
           });
           
-          if (found) {
+          if (!found) {
+            // Check history for this stale chapter slug
+            try {
+              const histList = await import('../services/storage').then(s => s.storageService.getHistory());
+              const staleItem = histList.find((h: any) => h.chapterId === chapterId && h.mangaId === mangaId);
+              if (staleItem && staleItem.chapterNumber) {
+                // Find chapter with same number
+                const newMatchingChapter = mergedList.find((c: any) => c.chapter_number?.toString() === staleItem.chapterNumber.toString() || parseFloat(c.chapter_number) === parseFloat(staleItem.chapterNumber));
+                if (newMatchingChapter && newMatchingChapter.slug) {
+                  found = newMatchingChapter;
+                  foundIndex = mergedList.indexOf(newMatchingChapter);
+                  chapterObj = newMatchingChapter;
+                  window.history.replaceState(null, '', `/read/${mangaId}/${newMatchingChapter.slug}`);
+                }
+              }
+            } catch(hc) {
+              console.error('History cross-reference failed', hc);
+            }
+          } else {
             chapterObj = found;
           }
           
