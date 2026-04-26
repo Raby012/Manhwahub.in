@@ -329,10 +329,8 @@ export const getChapterPages = async (mangaSlug: string, chapterSlug: any) => {
       }
       
       if (provider === 'mangadex') {
-        const data = await cachedFetch(`https://api.mangadex.org/at-home/server/${slug}`).then(r => r.json());
-        if (data?.chapter?.data?.length > 0) {
-          return data.chapter.data.map((f: string) => `${data.baseUrl}/data/${data.chapter.hash}/${f}`);
-        }
+        const data = await cachedFetch(`/api/mangadex/pages?id=${slug}`).then(r => r.json());
+        if (data?.length > 0) return data;
       }
       
       if (provider === 'railway') {
@@ -344,10 +342,8 @@ export const getChapterPages = async (mangaSlug: string, chapterSlug: any) => {
         if (slug && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)) {
           console.log(`[Railway Empty] Falling back to MangaDex directly for UUID: ${slug}`);
           try {
-            const data = await cachedFetch(`https://api.mangadex.org/at-home/server/${slug}`).then(r => r.json());
-            if (data?.chapter?.data?.length > 0) {
-              return data.chapter.data.map((f: string) => `${data.baseUrl}/data/${data.chapter.hash}/${f}`);
-            }
+            const mxData = await cachedFetch(`/api/mangadex/pages?id=${slug}`).then(r => r.json());
+            if (mxData?.length > 0) return mxData;
           } catch(err) {
             console.error("MangaDex direct fallback failed", err);
           }
@@ -361,11 +357,39 @@ export const getChapterPages = async (mangaSlug: string, chapterSlug: any) => {
   // Fallback for primitive string calls or unknowns
   if (typeof chapterSlug === 'string' || (chapterSlug?.slug && !sources.comick && !sources.weebcentral && !sources.mangadex && !sources.railway)) {
     const slug = typeof chapterSlug === 'string' ? chapterSlug : chapterSlug.slug;
+    
+    // Railway fallback
     try {
       const data = await cachedFetch(`${BASE}/api/chapter/${slug}`).then(r => r.json());
       const pages = data?.chapters || data?.pages || data?.images || [];
       if (pages.length > 0) return pages.map((p: any) => p.ch || p.img || p.url || p);
-    } catch (e) { }
+    } catch(e) {}
+      
+    // MangaDex fallback
+    if (slug && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)) {
+      try {
+         const mxData = await cachedFetch(`/api/mangadex/pages?id=${slug}`).then(r => r.json());
+         if (mxData?.length > 0) return mxData;
+      } catch(e) {}
+    }
+      
+    // Weebcentral fallback
+    if (slug && typeof slug === 'string' && slug.length > 20) {
+      try {
+        const wcData = await cachedFetch(`/api/weebcentral/pages?id=${encodeURIComponent(slug)}`).then(r => r.json());
+        if (wcData?.length > 0) return wcData.map((p: any) => p.img);
+      } catch(e) {}
+    }
+      
+    // Comick fallback
+    try {
+      const ckData = await cachedFetch(`/api/comick/pages?id=${encodeURIComponent(slug)}`).then(r => r.json());
+      let ckPages = ckData?.chapter?.images?.map((img: any) => img.url);
+      if (!ckPages || ckPages.length === 0) {
+         ckPages = Array.isArray(ckData) ? ckData.map((p:any) => p.img || p) : [];
+      }
+      if (ckPages?.length > 0) return ckPages;
+    } catch(e) {}
   }
 
   return [];
