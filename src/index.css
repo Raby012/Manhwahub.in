@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+:root {
+  --bg: #0a0a0f;
+  --bg2: #12121a;
+  --card: #1a1a26;
+  --border: rgba(255,255,255,0.08);
+  --accent: #6c5ce7;
+  --accent2: #fd79a8;
+  --text: #e8e8f0;
+  --muted: #888899;
+  --green: #00b894;
+  --gold: #fdcb6e;
+}
+
+@theme {
+  --color-background: var(--bg);
+  --color-surface: var(--bg2);
+  --color-card: var(--card);
+  --color-border-line: var(--border);
+  --color-border: var(--border);
+  --color-brand: var(--accent);
+  --color-brand-secondary: var(--accent2);
+  --color-content: var(--text);
+  --color-muted: var(--muted);
+  
+  --color-manhwa: #e84393;
+  --color-manga: #0984e3;
+  --color-manhua: #00b894;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-content font-sans antialiased;
+    background-color: var(--bg);
+    color: var(--text);
+  }
+
+  /* Custom scrollbar for a cleaner look */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-background;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full transition-colors;
+    background-color: rgba(255,255,255,0.1);
+  }
+}
+
+@layer utilities {
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
