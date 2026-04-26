@@ -154,22 +154,35 @@ export async function getChapters(manga: any) {
     // 4. Fetch from ComicK (Excellent library with almost all manhwas)
     const ckPromise = (async () => {
       try {
-        if (!title) return [];
-        let ckSearch = await cachedFetch(`/api/comick/search?q=${encodeURIComponent(title)}`).then(r => r.json());
-        let ckMatch = ckSearch[0]; // Best match
-        
-        // --- 🟢 NEW: Fallback search if empty ---
-        if (!ckMatch && altTitleArray.length > 0) {
-           for (const altEn of altTitleArray) {
-             ckSearch = await cachedFetch(`/api/comick/search?q=${encodeURIComponent(altEn)}`).then(r => r.json());
-             ckMatch = ckSearch[0];
-             if (ckMatch) break;
-           }
-        }
+         if (!title) return [];
+         
+         const fetchCkSearch = async (q: string) => {
+            try {
+              return await cachedFetch(`https://api.allorigins.win/raw?url=${encodeURIComponent('https://api.comick.io/v1.0/search?q=' + encodeURIComponent(q))}`).then(r => r.json());
+            } catch(e) {
+              return await cachedFetch(`/api/comick/search?q=${encodeURIComponent(q)}`).then(r => r.json());
+            }
+         };
+         
+         let ckSearch = await fetchCkSearch(title);
+         let ckMatch = ckSearch[0]; // Best match
+         
+         if (!ckMatch && altTitleArray.length > 0) {
+            for (const altEn of altTitleArray) {
+              ckSearch = await fetchCkSearch(altEn);
+              ckMatch = ckSearch[0];
+              if (ckMatch) break;
+            }
+         }
 
-        if (!ckMatch?.id) return [];
-        const ckChapters = await cachedFetch(`/api/comick/chapters?id=${encodeURIComponent(ckMatch.id)}`).then(r => r.json());
-        return ckChapters;
+         if (!ckMatch?.hid) return [];
+         
+         try {
+           const ckChList = await cachedFetch(`https://api.allorigins.win/raw?url=${encodeURIComponent('https://api.comick.io/comic/' + ckMatch.hid + '/chapters?lang=en&limit=500')}`).then(r => r.json());
+           return ckChList?.chapters || [];
+         } catch(e) {
+           return await cachedFetch(`/api/comick/chapters?id=${encodeURIComponent(ckMatch.hid)}`).then(r => r.json());
+         }
       } catch (e) {
         return [];
       }
@@ -329,8 +342,16 @@ export const getChapterPages = async (mangaSlug: string, chapterSlug: any) => {
       }
       
       if (provider === 'mangadex') {
-        const data = await cachedFetch(`/api/mangadex/pages?id=${slug}`).then(r => r.json());
-        if (data?.length > 0) return data;
+        try {
+          const directData = await cachedFetch(`https://api.mangadex.org/at-home/server/${slug}`).then(r => r.json());
+          if (directData?.chapter?.data) {
+            const pages = directData.chapter.data.map((f: string) => `${directData.baseUrl}/data/${directData.chapter.hash}/${f}`);
+            if (pages.length > 0) return pages;
+          }
+        } catch(e) {
+          const data = await cachedFetch(`/api/mangadex/pages?id=${slug}`).then(r => r.json());
+          if (Array.isArray(data) && data.length > 0) return data;
+        }
       }
       
       if (provider === 'railway') {
@@ -368,9 +389,17 @@ export const getChapterPages = async (mangaSlug: string, chapterSlug: any) => {
     // MangaDex fallback
     if (slug && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)) {
       try {
-         const mxData = await cachedFetch(`/api/mangadex/pages?id=${slug}`).then(r => r.json());
-         if (mxData?.length > 0) return mxData;
-      } catch(e) {}
+         const directData = await cachedFetch(`https://api.mangadex.org/at-home/server/${slug}`).then(r => r.json());
+         if (directData?.chapter?.data) {
+           const mxData = directData.chapter.data.map((f: string) => `${directData.baseUrl}/data/${directData.chapter.hash}/${f}`);
+           if (mxData?.length > 0) return mxData;
+         }
+      } catch(e) {
+         try {
+           const mxData = await cachedFetch(`/api/mangadex/pages?id=${slug}`).then(r => r.json());
+           if (Array.isArray(mxData) && mxData.length > 0) return mxData;
+         } catch(err) {}
+      }
     }
       
     // Weebcentral fallback
