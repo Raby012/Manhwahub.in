@@ -21,6 +21,30 @@ const getRandomUA = () => USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.len
 const weebCentral = new MANGA.WeebCentral();
 const comick = new MANGA.ComicK();
 
+// Bypass Cloudflare using gotScraping for consumet providers
+const applyGotScrapingOverride = (provider: any) => {
+  provider._axios = () => {
+    return {
+      get: async (url: string, options: any) => {
+        let finalUrl = url;
+        if (!url.startsWith('http')) {
+          finalUrl = (provider.apiUrl || provider.baseUrl) + url;
+        }
+        const { gotScraping } = await import('got-scraping');
+        const res = await gotScraping({ url: finalUrl, headers: options?.headers });
+        try {
+          return { data: typeof res.body === 'string' && res.body.startsWith('{') ? JSON.parse(res.body) : res.body };
+        } catch(e) {
+          return { data: res.body };
+        }
+      }
+    } as any;
+  };
+};
+
+applyGotScrapingOverride(weebCentral);
+applyGotScrapingOverride(comick);
+
 async function startServer() {
   const app = express();
   app.use(express.json());

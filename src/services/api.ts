@@ -307,8 +307,20 @@ export const getChapterPages = async (mangaSlug: string, chapterSlug: any) => {
     
     try {
       if (provider === 'comick') {
-        const data = await cachedFetch(`/api/comick/pages?id=${encodeURIComponent(slug)}`).then(r => r.json());
-        if (data?.length > 0) return data.map((p: any) => p.img);
+        let ckData: any;
+        try {
+          ckData = await cachedFetch(`https://api.allorigins.win/raw?url=${encodeURIComponent('https://api.comick.io/chapter/' + slug)}`).then(r => r.json());
+        } catch(e) {
+          // Fallback to internal proxy if cors proxy fails
+          ckData = await cachedFetch(`/api/comick/pages?id=${encodeURIComponent(slug)}`).then(r => r.json());
+        }
+        
+        let pages = ckData?.chapter?.images?.map((img: any) => img.url);
+        // Fallback for internal proxy structure
+        if (!pages || pages.length === 0) {
+           pages = Array.isArray(ckData) ? ckData.map((p:any) => p.img || p) : [];
+        }
+        if (pages?.length > 0) return pages;
       }
       
       if (provider === 'weebcentral') {
